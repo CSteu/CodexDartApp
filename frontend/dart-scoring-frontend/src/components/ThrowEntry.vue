@@ -16,7 +16,6 @@ const emit = defineEmits<{
 }>();
 
 const throws = ref<SubmitThrow[]>([]);
-const selectedSegment = ref<number | null>(null);
 const selectedMultiplier = ref<number>(1);
 
 const multipliers = reactive([
@@ -68,65 +67,39 @@ watch(
   () => props.mode,
   () => {
     clearThrows();
-    selectedSegment.value = null;
     selectedMultiplier.value = 1;
   }
 );
-
-watch(selectedSegment, segment => {
-  if (segment === null) {
-    return;
-  }
-
-  if (segment === 50) {
-    selectedMultiplier.value = 1;
-  } else if (segment === 25 && selectedMultiplier.value > 2) {
-    selectedMultiplier.value = 2;
-  }
-});
-
-function isMultiplierDisabled(multiplier: number) {
-  if (selectedSegment.value === 50) {
-    return multiplier !== 1;
-  }
-  if (selectedSegment.value === 25) {
-    return multiplier > 2;
-  }
-  return false;
-}
 
 const totalScore = computed(() => throws.value.reduce((acc, dart) => acc + dartScore(dart), 0));
 const hasMaxThrows = computed(() => throws.value.length >= maxThrows);
 
 function setMultiplier(value: number) {
-  if (isMultiplierDisabled(value)) {
-    return;
-  }
   selectedMultiplier.value = value;
 }
 
-function selectSegment(segment: number) {
-  selectedSegment.value = segment;
-}
-
-function addThrow() {
-  if (selectedSegment.value === null || hasMaxThrows.value || props.disabled || props.isSubmitting) {
+function recordSegment(segment: number) {
+  if (hasMaxThrows.value || props.disabled || props.isSubmitting) {
     return;
   }
 
-  const multiplier = selectedMultiplier.value;
-  if (selectedSegment.value === 50 && multiplier !== 1) {
-    return;
-  }
-  if (selectedSegment.value === 25 && multiplier > 2) {
-    return;
+  let multiplier = selectedMultiplier.value;
+
+  if (segment === 50) {
+    multiplier = 1;
+    if (selectedMultiplier.value !== 1) {
+      selectedMultiplier.value = 1;
+    }
+  } else if (segment === 25 && multiplier > 2) {
+    multiplier = 2;
+    selectedMultiplier.value = 2;
   }
 
   throws.value = [
     ...throws.value,
     {
       multiplier,
-      segment: selectedSegment.value
+      segment
     }
   ];
 }
@@ -159,19 +132,11 @@ function submit() {
   }
   emit('submit', throws.value.map(dart => ({ ...dart })));
   clearThrows();
-  selectedSegment.value = null;
 }
 
 const canSubmit = computed(() => !props.disabled && !props.isSubmitting && throws.value.length > 0);
 const canUndo = computed(() => !props.disabled && !props.isSubmitting && !props.undoDisabled);
 const canClear = computed(() => !props.disabled && throws.value.length > 0);
-const addDisabled = computed(
-  () =>
-    props.disabled ||
-    props.isSubmitting ||
-    selectedSegment.value === null ||
-    hasMaxThrows.value
-);
 </script>
 
 <template>
@@ -208,7 +173,7 @@ const addDisabled = computed(
           type="button"
           class="picker__btn"
           :class="{ 'picker__btn--active': selectedMultiplier === option.value }"
-          :disabled="props.disabled || props.isSubmitting || isMultiplierDisabled(option.value)"
+          :disabled="props.disabled || props.isSubmitting"
           @click="setMultiplier(option.value)"
         >
           {{ option.label }}
@@ -222,19 +187,14 @@ const addDisabled = computed(
           type="button"
           role="gridcell"
           class="picker__segment"
-          :class="{ 'picker__segment--active': selectedSegment === segment }"
           :disabled="props.disabled || props.isSubmitting"
-          @click="selectSegment(segment)"
+          @click="recordSegment(segment)"
         >
           <span v-if="segment === 25">Bull</span>
           <span v-else-if="segment === 50">Inner Bull</span>
           <span v-else>{{ segment }}</span>
         </button>
       </div>
-
-      <button type="button" class="btn btn--primary picker__submit" :disabled="addDisabled" @click="addThrow">
-        Add Dart
-      </button>
     </div>
 
     <div class="throws" aria-live="polite">
@@ -338,16 +298,6 @@ const addDisabled = computed(
   text-transform: uppercase;
   font-weight: 600;
   transition: border-color 0.2s ease, transform 0.2s ease;
-}
-
-.picker__segment--active {
-  border-color: var(--accent);
-  transform: translateY(-1px);
-  box-shadow: 0 12px 30px rgba(16, 185, 129, 0.25);
-}
-
-.picker__submit {
-  justify-self: flex-start;
 }
 
 .throws {
