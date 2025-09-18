@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
 import type { MatchMode, SubmitThrow } from '@/types/api';
+import { dartScore, formatSubmitThrow } from '@/utils/dartUtils';
 
 const props = defineProps<{
   mode: MatchMode | null;
@@ -94,29 +95,8 @@ function isMultiplierDisabled(multiplier: number) {
   return false;
 }
 
-function computeScore(dart: SubmitThrow) {
-  if (dart.segment === 50) {
-    return 50;
-  }
-  if (dart.segment === 25) {
-    return Math.min(dart.multiplier, 2) * 25;
-  }
-  return dart.multiplier * dart.segment;
-}
-
-const totalScore = computed(() => throws.value.reduce((acc, dart) => acc + computeScore(dart), 0));
+const totalScore = computed(() => throws.value.reduce((acc, dart) => acc + dartScore(dart), 0));
 const hasMaxThrows = computed(() => throws.value.length >= maxThrows);
-
-function throwLabel(dart: SubmitThrow) {
-  if (dart.segment === 50) {
-    return 'Inner Bull';
-  }
-  if (dart.segment === 25) {
-    return dart.multiplier === 2 ? 'Double Bull' : 'Outer Bull';
-  }
-  const prefix = multipliers.find(option => option.value === dart.multiplier)?.short ?? 'S';
-  return `${prefix}${dart.segment}`;
-}
 
 function setMultiplier(value: number) {
   if (isMultiplierDisabled(value)) {
@@ -263,8 +243,8 @@ const addDisabled = computed(
       </div>
       <div v-else class="throws__list">
         <div v-for="(dart, index) in throws" :key="index" class="throws__item">
-          <span class="throws__label">{{ throwLabel(dart) }}</span>
-          <span class="throws__score">{{ computeScore(dart) }}</span>
+          <span class="throws__label">{{ formatSubmitThrow(dart) }}</span>
+          <span class="throws__score">{{ dartScore(dart) }}</span>
           <button type="button" class="throws__remove" :disabled="props.disabled" @click="removeThrow(index)">
             <span class="sr-only">Remove dart</span>
             ×
