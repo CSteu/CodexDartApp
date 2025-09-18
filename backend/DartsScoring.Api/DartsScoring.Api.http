@@ -1,0 +1,6 @@
+@DartsScoring.Api_HostAddress = http://localhost:5139
+
+GET {{DartsScoring.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
