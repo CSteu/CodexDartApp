@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { formatThrowsFromResponses } from '@/utils/dartUtils';
 import type {
   LegStateResponse,
   PlayerResponse,
@@ -36,32 +37,56 @@ const turnMap = computed(() => {
     list.push(turn);
     grouped.set(turn.playerId, list);
   }
+
+  for (const list of grouped.values()) {
+    list.sort((a, b) => (a.turnNumber - b.turnNumber) || (a.id - b.id));
+  }
   return grouped;
 });
 
 const playerCards = computed(() =>
   props.players.map(player => {
     const state = x01StateByPlayer.value.get(player.id);
+    const playerTurns = turnMap.value.get(player.id) ?? [];
+    const dartsThrown = playerTurns.reduce((acc, turn) => acc + turn.throws.length, 0);
+    const lastTurn = playerTurns.length ? playerTurns[playerTurns.length - 1] : null;
+    const lastVisit = lastTurn
+      ? {
+          wasBust: lastTurn.wasBust,
+          scoreLabel: lastTurn.wasBust ? 'Bust' : `${lastTurn.totalScored}`,
+          throws: lastTurn.throws.length ? formatThrowsFromResponses(lastTurn.throws) : null
+        }
+      : null;
+
     if (state) {
+      const scored = props.targetScore > 0 ? Math.max(props.targetScore - state.remaining, 0) : 0;
+      const progress = props.targetScore > 0 ? Math.round((Math.min(scored, props.targetScore) / props.targetScore) * 100) : 0;
       return {
         player,
         remaining: state.remaining,
-        average: state.threeDartAverage
+        average: state.threeDartAverage,
+        progress,
+        visits: playerTurns.length,
+        dartsThrown,
+        lastVisit
       };
     }
 
-    const playerTurns = turnMap.value.get(player.id) ?? [];
     const totalScore = playerTurns
       .filter(turn => !turn.wasBust)
       .reduce((acc, turn) => acc + turn.totalScored, 0);
-    const dartsThrown = playerTurns.reduce((acc, turn) => acc + turn.throws.length, 0);
     const remaining = Math.max(props.targetScore - totalScore, 0);
     const average = dartsThrown > 0 ? (totalScore / dartsThrown) * 3 : 0;
+    const progress = props.targetScore > 0 ? Math.round((Math.min(totalScore, props.targetScore) / props.targetScore) * 100) : 0;
 
     return {
       player,
       remaining,
-      average
+      average,
+      progress,
+      visits: playerTurns.length,
+      dartsThrown,
+      lastVisit
     };
   })
 );
@@ -95,9 +120,32 @@ function formatAverage(value: number) {
         <p class="score-card__remaining" aria-label="Remaining score">
           {{ card.remaining }}
         </p>
-        <p class="score-card__average">
-          <span class="label">3-dart avg</span>
-          <span>{{ formatAverage(card.average) }}</span>
+        <div class="score-card__progress" role="group" aria-label="Progress toward finishing">
+          <div class="score-card__progress-track" aria-hidden="true">
+            <div class="score-card__progress-fill" :style="{ width: `${card.progress}%` }"></div>
+          </div>
+          <span class="score-card__progress-label">{{ card.progress }}% to finish</span>
+        </div>
+        <div class="score-card__metrics">
+          <p class="score-card__metric">
+            <span class="label">3-dart avg</span>
+            <span class="score-card__metric-value">{{ formatAverage(card.average) }}</span>
+          </p>
+          <p class="score-card__metric">
+            <span class="label">Visits</span>
+            <span class="score-card__metric-value">
+              {{ card.visits }}
+              <span v-if="card.dartsThrown" class="score-card__muted">({{ card.dartsThrown }} darts)</span>
+            </span>
+          </p>
+        </div>
+        <p class="score-card__last">
+          <span class="label">Last visit</span>
+          <span v-if="card.lastVisit" :class="{ 'score-card__last--bust': card.lastVisit.wasBust }">
+            {{ card.lastVisit.scoreLabel }}
+            <span v-if="card.lastVisit.throws" class="score-card__last-throws">({{ card.lastVisit.throws }})</span>
+          </span>
+          <span v-else>—</span>
         </p>
       </article>
     </div>
@@ -159,18 +207,87 @@ function formatAverage(value: number) {
   color: #f8fafc;
 }
 
-.score-card__average {
-  display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  color: rgba(226, 232, 240, 0.75);
-  margin-top: 1rem;
-}
-
 .label {
   font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+.score-card__progress {
+  display: grid;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.score-card__progress-track {
+  width: 100%;
+  height: 0.5rem;
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.score-card__progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), rgba(16, 185, 129, 0.75));
+}
+
+.score-card__progress-label {
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.75);
+}
+
+.score-card__metrics {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.score-card__metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgba(226, 232, 240, 0.75);
+  margin: 0;
+}
+
+.score-card__metric-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.score-card__muted {
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.6);
+  margin-left: 0.35rem;
+}
+
+.score-card__last {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-top: 1.25rem;
+  color: rgba(226, 232, 240, 0.75);
+  gap: 0.75rem;
+}
+
+.score-card__last span:last-child {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.score-card__last--bust {
+  color: #fecaca;
+}
+
+.score-card__last-throws {
+  margin-left: 0.35rem;
+  font-size: 0.85rem;
+  color: rgba(226, 232, 240, 0.65);
 }
 
 .badge--glow {

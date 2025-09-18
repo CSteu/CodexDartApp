@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia';
 import { useRouter } from 'vue-router';
 import { useMatchStore } from '@/stores/matchStore';
 import { useToastStore } from '@/stores/toastStore';
-import type { ThrowResponse } from '@/types/api';
+import { formatThrowsFromResponses } from '@/utils/dartUtils';
 
 const props = defineProps<{ matchId: number }>();
 
@@ -60,17 +60,6 @@ const isReady = computed(() => !!activeMatch.value && !!legSummary.value);
 
 function formatAverage(value: number) {
   return value.toFixed(2);
-}
-
-function formatThrow(dart: ThrowResponse) {
-  if (dart.segment === 50) {
-    return 'Inner Bull';
-  }
-  if (dart.segment === 25) {
-    return dart.multiplier === 2 ? 'Double Bull' : 'Outer Bull';
-  }
-  const prefix = dart.multiplier === 1 ? 'S' : dart.multiplier === 2 ? 'D' : 'T';
-  return `${prefix}${dart.segment}`;
 }
 
 async function ensureMatchLoaded(matchId: number) {
@@ -198,7 +187,7 @@ watch(legId, async newLegId => {
             <tr v-for="turn in sortedTurns" :key="turn.id">
               <td>{{ turn.turnNumber }}</td>
               <td>{{ playerNameMap.get(turn.playerId) }}</td>
-              <td>{{ turn.throws.map(formatThrow).join(', ') || '—' }}</td>
+              <td>{{ turn.throws.length ? formatThrowsFromResponses(turn.throws) : '—' }}</td>
               <td>{{ turn.totalScored }}</td>
               <td>
                 <span v-if="turn.wasBust" class="badge badge--bust">Bust</span>

@@ -1,6 +1,6 @@
 # Codex Darts – Demo Guide
 
-This repository contains a minimal darts scoring experience with a Vue 3 frontend and a .NET 9 Web API backend. Docker Compose spins up SQL Server, the API, and the web UI with a single command.
+This repository contains a polished darts scoring experience with a Vue 3 frontend and a .NET 9 Web API backend. Docker Compose spins up SQL Server, the API, and the web UI with a single command.
 
 ## Prerequisites
 
@@ -27,6 +27,13 @@ Docker Compose provisions:
 * **web** – Built Vue app served by nginx. The app talks to the API via `http://api:5200` inside the network.
 
 To stop the stack use `docker-compose down`. Add `-v` to drop the SQL volume if you want to reset seed data.
+
+## Feature highlights
+
+* **Live checkout coaching** – X01 players see remaining score context, finish notes, and up to four optimal routes computed in real time (double-out aware).
+* **Cricket target helper** – The insights panel calls out which numbers you still need to close and whether the opponent has already shut them down.
+* **Enhanced X01 scoreboard** – Player cards show a finish progress bar, current average, visit counts, dart totals, and the full detail of the most recent visit.
+* **Decorated turn history** – Busts, ton+, 140+, and 180 visits stand out with badges and row highlights. The table is responsive for tablets and phones.
 
 ## Local development (optional)
 
@@ -73,18 +80,24 @@ Once the containers are up:
 1. **Open Match A (X01)**
    * Load the app and click **Match A – X01 Demo**.
    * Enter a few turns using the quick totals (e.g., 60, 45, 100) and show a bust scenario by overshooting the remaining score.
-   * Watch the remaining score and 3-dart average update live.
+   * Watch the enhanced scoreboard update the progress bar, visit count, and “Last visit” detail in real time.
+   * Review the checkout guide to see finish routes appear once the remaining score drops into range.
 
 2. **Start a fresh Cricket match**
    * Go back to **New Match**.
    * Create a new Cricket match with Alice and Bob (Bob starts by default).
    * Use the segment picker to mark 20s and 19s, demonstrating how points accrue once one side closes a number first.
+   * Check the “Targets to close” list to track which marks you still need.
 
 3. **Undo a turn**
    * Click **Undo Last Turn** to remove the previous entry and confirm the scoreboard rolls back correctly.
 
 4. **Show the summary**
    * Navigate to the **Summary** page to display per-turn breakdowns and player averages.
+
+5. **Highlight the insights panel**
+   * Point out the ton+/180 badges in the turn history table and the last-turn callout in the insight tiles.
+   * On mobile, demonstrate the horizontal scroll container that keeps the full turn breakdown accessible.
 
 ## API overview
 
