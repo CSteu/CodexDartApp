@@ -15,7 +15,12 @@ const matchDescriptor = computed(() => {
     return null;
   }
 
-  const playerNames = activeMatch.value.players.map(player => player.displayName).join(' vs ');
+  const players = Array.isArray(activeMatch.value.players) ? activeMatch.value.players : [];
+  if (players.length === 0) {
+    return `${activeMatch.value.mode}`;
+  }
+
+  const playerNames = players.map(player => player.displayName).join(' vs ');
   return `${activeMatch.value.mode} • ${playerNames}`;
 });
 
