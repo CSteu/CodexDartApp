@@ -36,7 +36,7 @@ services:
       context: ../frontend/dart-scoring-frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: ${DOCKER_VITE_API_BASE_URL:-http://api:5200}
+        VITE_API_BASE_URL: ${DOCKER_VITE_API_BASE_URL:-http://localhost:5200}
     container_name: darts-web
     depends_on:
       api:

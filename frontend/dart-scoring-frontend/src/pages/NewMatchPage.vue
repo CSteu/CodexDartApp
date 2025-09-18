@@ -34,6 +34,19 @@ const canCreate = computed(
 );
 
 const availablePlayers = computed(() => players.value);
+const resumeMatchDescriptor = computed(() => {
+  if (!activeMatch.value) {
+    return '';
+  }
+
+  const matchPlayers = Array.isArray(activeMatch.value.players) ? activeMatch.value.players : [];
+  if (matchPlayers.length === 0) {
+    return `${activeMatch.value.mode}`;
+  }
+
+  const playerNames = matchPlayers.map(player => player.displayName).join(' vs ');
+  return `${activeMatch.value.mode} • ${playerNames}`;
+});
 
 onMounted(() => {
   matchStore.fetchPlayers();
@@ -212,9 +225,8 @@ async function loadDemoMatch(matchId: number) {
 
         <div v-if="activeMatch" class="resume">
           <h3>Resume current match</h3>
-          <p>
-            {{ activeMatch.mode }} •
-            {{ activeMatch.players.map(player => player.displayName).join(' vs ') }}
+          <p v-if="resumeMatchDescriptor">
+            {{ resumeMatchDescriptor }}
           </p>
           <div class="resume__actions">
             <button
